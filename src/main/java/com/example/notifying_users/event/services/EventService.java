@@ -2,34 +2,42 @@ package com.example.notifying_users.event.services;
 
 import com.example.notifying_users.event.entities.Event;
 import com.example.notifying_users.event.repositories.EventRepository;
-import com.example.notifying_users.period.entities.Period;
-import com.example.notifying_users.user.entities.User;
+import com.example.notifying_users.notifying.sevices.NotifyingService;
 import com.example.notifying_users.user.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.time.DayOfWeek;
-import java.time.LocalTime;
 import java.util.List;
-import java.util.logging.Logger;
+import java.util.Optional;
 
 @Service
 public class EventService {
 
     private final EventRepository eventRepository;
     private final UserRepository userRepository;
-    private final Logger logger = Logger.getLogger(EventService.class.getName());
+    private final NotifyingService notifyingService;
 
     @Autowired
-    public EventService(EventRepository eventRepository, UserRepository userRepository) {
+    public EventService(EventRepository eventRepository, UserRepository userRepository, NotifyingService notifyingService) {
         this.eventRepository = eventRepository;
         this.userRepository = userRepository;
+        this.notifyingService = notifyingService;
     }
 
     public Event createEvent(Event event) {
         Event savedEvent = eventRepository.save(event);
-        notifyUsers(savedEvent);
+        notifyingService.notify(savedEvent, userRepository.findAll());
         return savedEvent;
+    }
+
+    public <I> Optional<Event> updateEvent(I id, Event updatedEvent) {
+        Optional<Event> eventOpt = eventRepository.findById(id);
+        if (eventOpt.isEmpty())
+            return eventOpt;
+        Event savedEvent = eventOpt.get();
+        savedEvent.setMessage(updatedEvent.getMessage());
+        savedEvent.setNotifyingDate(updatedEvent.getNotifyingDate());
+        return Optional.of(eventRepository.save(savedEvent));
     }
 
     public List<Event> getAllEvents() {
@@ -40,28 +48,5 @@ public class EventService {
         eventRepository.deleteById(id);
     }
 
-    private void notifyUsers(Event event) {
-        List<User> users = userRepository.findAll();
-        for (User user : users) {
-            for (Period period : user.getPeriods()) {
-                DayOfWeek eventDay = event.getCreatedAt().getDayOfWeek();
-                LocalTime eventTime = event.getCreatedAt().toLocalTime();
-
-                if (isEventInPeriod(eventDay, eventTime, period)) {
-                    logger.info("User " + user.getFullName() + ": " + event.getMessage());
-                }
-            }
-        }
-    }
-
-    private boolean isEventInPeriod(DayOfWeek eventDay, LocalTime eventTime, Period period) {
-        DayOfWeek startDay = period.getStartDay();
-        DayOfWeek endDay = period.getEndDay();
-
-        if (startDay.compareTo(eventDay) <= 0 && endDay.compareTo(eventDay) >= 0) {
-            return eventTime.compareTo(period.getStartTime()) >= 0 && eventTime.compareTo(period.getEndTime()) <= 0;
-        }
-        return false;
-    }
 }
 

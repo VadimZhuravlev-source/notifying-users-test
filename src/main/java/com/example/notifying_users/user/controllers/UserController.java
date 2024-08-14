@@ -1,50 +1,44 @@
 package com.example.notifying_users.user.controllers;
 
 import com.example.notifying_users.user.entities.User;
-import com.example.notifying_users.user.repositories.UserRepository;
+import com.example.notifying_users.user.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/users")
 public class UserController {
 
-    private final UserRepository userRepository;
+    private final UserService userService;
 
     @Autowired
-    public UserController(UserRepository userRepository) {
-        this.userRepository = userRepository;
+    public UserController(UserService userService) {
+        this.userService = userService;
     }
 
     @GetMapping
     public List<User> getAllUsers() {
-        return userRepository.findAll();
+        return userService.getAll();
     }
 
     @PostMapping
     public User createUser(@RequestBody User user) {
-        return userRepository.save(user);
+        return userService.create(user);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<User> updateUser(@PathVariable Long id, @RequestBody User updatedUser) {
-        return userRepository.findById(id)
-                .map(user -> {
-                    user.setLastName(updatedUser.getLastName());
-                    user.setFirstName(updatedUser.getFirstName());
-                    user.setPatronymic(updatedUser.getPatronymic());
-                    user.setPeriods(updatedUser.getPeriods());
-                    return ResponseEntity.ok(userRepository.save(user));
-                })
-                .orElseGet(() -> ResponseEntity.notFound().build());
+        Optional<User> user = userService.update(id, updatedUser);
+        return user.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")
     public void deleteUser(@PathVariable Long id) {
-        userRepository.deleteById(id);
+        userService.delete(id);
     }
 }
 

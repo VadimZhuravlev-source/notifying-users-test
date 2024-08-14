@@ -3,9 +3,11 @@ package com.example.notifying_users.event.controllers;
 import com.example.notifying_users.event.entities.Event;
 import com.example.notifying_users.event.services.EventService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/events")
@@ -24,8 +26,15 @@ public class EventController {
     }
 
     @PostMapping
-    public Event createEvent(@RequestBody Event event) {
-        return eventService.createEvent(event);
+    public ResponseEntity<Event> createEvent(@RequestBody Event event) {
+        Event newEvent = eventService.createEvent(event);
+        return ResponseEntity.ok(eventService.createEvent(newEvent));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Event> updateEvent(@PathVariable Long id, @RequestBody Event updatedEvent) {
+        Optional<Event> event = eventService.updateEvent(id, updatedEvent);
+        return event.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")
