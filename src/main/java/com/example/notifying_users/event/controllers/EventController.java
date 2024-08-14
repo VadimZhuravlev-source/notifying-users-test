@@ -22,23 +22,23 @@ public class EventController {
 
     @GetMapping
     public List<Event> getAllEvents() {
-        return eventService.getAllEvents();
+        return eventService.getAll();
     }
 
     @PostMapping
     public ResponseEntity<Event> createEvent(@RequestBody Event event) {
-        Event newEvent = eventService.createEvent(event);
-        return ResponseEntity.ok(eventService.createEvent(newEvent));
+        Event newEvent = eventService.create(event);
+        return ResponseEntity.ok(eventService.create(newEvent));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Event> updateEvent(@PathVariable Long id, @RequestBody Event updatedEvent) {
-        Optional<Event> event = eventService.updateEvent(id, updatedEvent);
+        Optional<Event> event = eventService.update(id, updatedEvent);
         return event.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")
     public void deleteEvent(@PathVariable Long id) {
-        eventService.deleteEvent(id);
+        eventService.delete(id);
     }
 }

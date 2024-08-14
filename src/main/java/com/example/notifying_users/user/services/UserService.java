@@ -84,7 +84,7 @@ public class UserService {
             return """
                 WITH user_id_filter_suiting_by_period AS (
                 
-                	SELECT
+                	SELECT DISTINCT
                 		user_id id
                 	FROM
                 		periods

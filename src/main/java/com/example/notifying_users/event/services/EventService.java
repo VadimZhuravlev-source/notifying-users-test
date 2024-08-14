@@ -30,7 +30,7 @@ public class EventService {
     }
 
     @Transactional
-    public Event createEvent(Event event) {
+    public Event create(Event event) {
         Event savedEvent = eventRepository.save(event);
         UsersForNotifyingEvent data = userService.getNotifyingData(savedEvent.getNotifyingDate());
         List<User> notifiesUsers = data.notifiedUsers();
@@ -42,7 +42,11 @@ public class EventService {
         return savedEvent;
     }
 
-    public <I> Optional<Event> updateEvent(I id, Event updatedEvent) {
+    public Event createNewEventForUsers(Event event, List<Long> userIds) {
+        return createClosestToUserPeriodsEvent(event, userIds);
+    }
+
+    public <I> Optional<Event> update(I id, Event updatedEvent) {
         Optional<Event> eventOpt = eventRepository.findById(id);
         if (eventOpt.isEmpty())
             return eventOpt;
@@ -51,27 +55,30 @@ public class EventService {
         return Optional.of(eventRepository.save(savedEvent));
     }
 
-    public List<Event> getAllEvents() {
+    public List<Event> getAll() {
         return eventRepository.findAll();
     }
 
-    public <I> void deleteEvent(I id) {
+    public <I> void delete(I id) {
         eventRepository.deleteById(id);
     }
 
-    private void createClosestToUserPeriodsEvent(Event parentEvent, List<Long> userIds) {
+    private Event createClosestToUserPeriodsEvent(Event parentEvent, List<Long> userIds) {
         if (userIds.isEmpty())
-            return;
+            return null;
 
         Event newEvent = new Event();
-        newEvent.setParentId(parentEvent.getId());
-        newEvent.setMessage(parentEvent.getMessage());
+        Long parentId = parentEvent.getParentId();
+        if (parentId == null) {
+            parentId = parentEvent.getId();
+        }
+        newEvent.setParentId(parentId);
+//        newEvent.setMessage(parentEvent.getMessage());
         List<EventUser> users = userIds.stream().filter(Objects::nonNull).distinct()
                 .map(id -> new EventUser(newEvent, id)).toList();
 
         newEvent.setUsers(users);
-        eventRepository.save(newEvent);
-
+        return eventRepository.save(newEvent);
     }
 
 }
