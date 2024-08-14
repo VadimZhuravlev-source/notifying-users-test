@@ -7,7 +7,9 @@ import com.example.notifying_users.user.entities.User;
 import org.springframework.stereotype.Service;
 
 import java.time.DayOfWeek;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -16,31 +18,52 @@ public class NotifyingService {
 
     private final Logger logger = Logger.getLogger(EventService.class.getName());
 
-    public void notify(Event event, List<User> users) {
-        notifyUsers(event, users);
+    public List<User> notify(Event event, List<User> users) {
+        return notifyUsers(event, users);
     }
 
-    private void notifyUsers(Event event, List<User> users) {
+    private List<User> notifyUsers(Event event, List<User> users) {
+        List<User> requiredDelayForNotifyingUsers = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
         for (User user : users) {
+            boolean notified = false;
             for (Period period : user.getPeriods()) {
-                DayOfWeek eventDay = event.getCreatedAt().getDayOfWeek();
-                LocalTime eventTime = event.getCreatedAt().toLocalTime();
+                DayOfWeek eventDay = event.getNotifyingDate().getDayOfWeek();
+                LocalTime eventTime = event.getNotifyingDate().toLocalTime();
 
                 if (isEventInPeriod(eventDay, eventTime, period)) {
-                    logger.info("User " + user.getFullName() + ": " + event.getMessage());
+                    logger.info(getMessage(now, user, event));
+                    notified = true;
                 }
             }
+            if (!notified) {
+                requiredDelayForNotifyingUsers.add(user);
+            }
         }
+        return requiredDelayForNotifyingUsers;
     }
 
     private boolean isEventInPeriod(DayOfWeek eventDay, LocalTime eventTime, Period period) {
+
         DayOfWeek startDay = period.getStartDay();
         DayOfWeek endDay = period.getEndDay();
 
-        if (startDay.compareTo(eventDay) <= 0 && endDay.compareTo(eventDay) >= 0) {
-            return eventTime.compareTo(period.getStartTime()) >= 0 && eventTime.compareTo(period.getEndTime()) <= 0;
+        if (eventDay.compareTo(startDay) >= 0 && eventDay.compareTo(endDay) <= 0) {
+            return compareTime(eventTime, period);
+        } else if (startDay.compareTo(endDay) > 0
+                && (eventDay.compareTo(startDay) >= 0 || eventDay.compareTo(endDay) <= 0)) {
+            return compareTime(eventTime, period);
         }
         return false;
+    }
+
+    private boolean compareTime(LocalTime eventTime, Period period) {
+        return eventTime.compareTo(period.getStartTime()) >= 0 && eventTime.compareTo(period.getEndTime()) <= 0;
+    }
+
+    private String getMessage(LocalDateTime date, User user, Event event) {
+        return date + " Пользователю " + user.getFullName() + " отправлено оповещение с текстом: " +
+                event.getMessage();
     }
 
 }

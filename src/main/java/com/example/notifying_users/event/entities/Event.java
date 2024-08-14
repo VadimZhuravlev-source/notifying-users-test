@@ -19,6 +19,7 @@ public class Event {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    private Long parentId;
     private LocalDateTime notifyingDate;
     private String message;
     private boolean notifyAll;
@@ -26,7 +27,7 @@ public class Event {
 
     @OneToMany(mappedBy = "event", cascade = CascadeType.ALL)
     @ToString.Exclude
-    private List<EventUser> periods;
+    private List<EventUser> users;
 
     @Override
     public boolean equals(Object o) {
@@ -40,4 +41,12 @@ public class Event {
     public int hashCode() {
         return Objects.hashCode(getId());
     }
+
+    public void update(Event event) {
+        this.message = event.getMessage();
+        this.notifyingDate = event.getNotifyingDate();
+        this.notifyAll = event.isNotifyAll();
+        this.notified = event.isNotified();
+    }
+
 }

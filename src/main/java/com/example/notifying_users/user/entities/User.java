@@ -43,4 +43,12 @@ public class User {
     public int hashCode() {
         return Objects.hashCode(getId());
     }
+
+    public void update(User user) {
+        this.lastName = user.getLastName();
+        this.firstName = user.getFirstName();
+        this.patronymic = user.getPatronymic();
+        this.periods = user.getPeriods();
+    }
+
 }
