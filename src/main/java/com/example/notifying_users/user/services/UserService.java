@@ -51,13 +51,17 @@ public class UserService {
         return gettingUsersForNotifying.getData(entityManager, userRepository, date);
     }
 
+    public <I> List<User> getUsersByIds(List<I> ids) {
+        return userRepository.findByIdIn(ids);
+    }
+
     private static class GettingUsersForNotifying {
 
         private final String queryText = getQueryTextGettingUsersIdForNotifying();
 
         UsersForNotifyingEvent getData(EntityManager entityManager, UserRepository userRepository, LocalDateTime date) {
 
-            Query query = entityManager.createQuery(queryText);
+            Query query = entityManager.createNativeQuery(queryText);
             query.setParameter("day_of_week", date.getDayOfWeek());
             query.setParameter("time", date.toLocalTime());
 

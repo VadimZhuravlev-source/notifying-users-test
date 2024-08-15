@@ -8,11 +8,9 @@ import java.util.List;
 import java.util.Optional;
 
 public interface UserRepository extends Repository<User, Long> {
-
     List<User> findAll();
     User save(User user);
     <I> void deleteById(I id);
     <I> Optional<User> findById(I id);
-
-    List<User> findByIdIn(Collection<Long> ids);
+    <I> List<User> findByIdIn(Collection<I> ids);
 }

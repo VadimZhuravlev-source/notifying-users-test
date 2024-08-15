@@ -2,12 +2,16 @@ package com.example.notifying_users.event.user;
 
 import com.example.notifying_users.event.entities.Event;
 import jakarta.persistence.*;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.util.Objects;
 
 @Entity
 @Table(name = "event_users")
+@Getter
+@Setter
 @NoArgsConstructor
 public class EventUser {
     @Id
@@ -18,11 +22,11 @@ public class EventUser {
     @JoinColumn(name = "event_id")
     private Event event;
 
-    private Long user_id;
+    private Long userId;
 
-    public EventUser(Event event, Long id) {
+    public EventUser(Event event, Long userId) {
         this.event = event;
-        this.user_id = id;
+        this.userId = userId;
     }
 
     @Override
