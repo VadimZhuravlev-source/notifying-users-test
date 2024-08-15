@@ -37,7 +37,10 @@ public class EventService {
         List<User> unnotifiedUsers = notifyingService.notify(savedEvent, notifiesUsers);
         List<Long> ids = unnotifiedUsers.stream().map(User::getId).toList();
         data.userIdsForDelayedNotifying().addAll(ids);
-        createClosestToUserPeriodsEvent(savedEvent, data.userIdsForDelayedNotifying());
+        Event newEvent = createClosestToUserPeriodsEvent(savedEvent, data.userIdsForDelayedNotifying());
+        if (newEvent != null) {
+            eventRepository.save(newEvent);
+        }
         savedEvent.setNotified(true);
         return savedEvent;
     }
@@ -46,7 +49,7 @@ public class EventService {
         return createClosestToUserPeriodsEvent(event, userIds);
     }
 
-    public <I> Optional<Event> update(I id, Event updatedEvent) {
+    public Optional<Event> update(Long id, Event updatedEvent) {
         Optional<Event> eventOpt = eventRepository.findById(id);
         if (eventOpt.isEmpty())
             return eventOpt;
@@ -59,8 +62,16 @@ public class EventService {
         return eventRepository.findAll();
     }
 
-    public <I> void delete(I id) {
+    public void delete(Long id) {
         eventRepository.deleteById(id);
+    }
+
+    public List<Event> getEventsByIds(List<Long> ids) {
+        return eventRepository.findByIdIn(ids);
+    }
+
+    public List<Event> saveAll(List<Event> events) {
+        return eventRepository.saveAll(events);
     }
 
     private Event createClosestToUserPeriodsEvent(Event parentEvent, List<Long> userIds) {
@@ -78,7 +89,7 @@ public class EventService {
                 .map(id -> new EventUser(newEvent, id)).toList();
 
         newEvent.setUsers(users);
-        return eventRepository.save(newEvent);
+        return newEvent;
     }
 
 }
