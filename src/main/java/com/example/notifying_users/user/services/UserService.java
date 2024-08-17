@@ -33,6 +33,9 @@ public class UserService {
     }
 
     public User create(User user) {
+        if (user.getPeriods() != null) {
+            user.getPeriods().forEach(period -> period.setUser(user));
+        }
         return userRepository.save(user);
     }
 

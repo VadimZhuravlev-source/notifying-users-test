@@ -1,40 +1,34 @@
 package com.example.notifying_users.period.entities;
 
-import com.example.notifying_users.user.entities.User;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.time.DayOfWeek;
-import java.util.ArrayList;
-import java.util.List;
+import java.time.LocalTime;
 import java.util.Objects;
 
 @Entity
-@Table(name = "periods")
-@Getter
+@Table(name = "time_period")
 @Setter
-public class Period {
+@Getter
+public class TimePeriod {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private DayOfWeek start;
-    private DayOfWeek end;
+    private LocalTime start;
+    private LocalTime end;
 
     @ManyToOne
-    @JoinColumn(name = "user_id")
-    private User user;
-
-    @OneToMany(mappedBy = "period", cascade = CascadeType.ALL)
-    private List<TimePeriod> timePeriods = new ArrayList<>();
+    @JoinColumn(name = "period_id")
+    private Period period;
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        Period period = (Period) o;
+        TimePeriod period = (TimePeriod) o;
         return Objects.equals(getId(), period.getId());
     }
 

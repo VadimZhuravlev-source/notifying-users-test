@@ -49,6 +49,9 @@ public class User {
         this.firstName = user.getFirstName();
         this.patronymic = user.getPatronymic();
         this.periods = user.getPeriods();
+        if (this.periods != null && !this.periods.isEmpty()) {
+            this.periods.forEach(period -> period.setUser(this));
+        }
     }
 
 }

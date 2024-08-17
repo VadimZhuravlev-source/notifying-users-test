@@ -5,6 +5,7 @@ import com.example.notifying_users.event.repositories.EventRepository;
 import com.example.notifying_users.event.user.EventUser;
 import com.example.notifying_users.notifying.sevices.NotifyingService;
 import com.example.notifying_users.period.entities.Period;
+import com.example.notifying_users.period.entities.TimePeriod;
 import com.example.notifying_users.user.entities.User;
 import com.example.notifying_users.user.entities.UsersForNotifyingEvent;
 import com.example.notifying_users.user.services.UserService;
@@ -79,11 +80,11 @@ public class EventService {
     }
 
     public List<Event> getEventsByIds(List<Long> ids) {
-        return eventRepository.findByIdIn(ids);
+        return eventRepository.findAllById(ids);
     }
 
-    public List<Event> saveAll(List<Event> events) {
-        return eventRepository.saveAll(events);
+    public void saveAll(List<Event> events) {
+        eventRepository.saveAll(events);
     }
 
     public LocalDateTime getNotifyingDate(Event event, LocalDateTime date, Map<?, User> idUserMap) {
@@ -114,13 +115,11 @@ public class EventService {
 
     private static class NotifyingDateGetting {
 
-        private LocalDateTime date;
         private DayOfWeek dayOfWeek;
         private LocalTime dateTime;
         private LocalTime closestTime;
-        private int minDays = 7;
-        private Map<?, User> idUserMap;
-        private int shift = 0;
+        private int minDays;
+        private int shift;
 
         public LocalDateTime get(Event event, LocalDateTime date, Map<?, User> idUserMap) {
 
@@ -129,18 +128,17 @@ public class EventService {
                 return date;
             }
 
-            this.date = date;
-            this.idUserMap = idUserMap;
             dayOfWeek = date.getDayOfWeek();
             dateTime = date.toLocalTime();
             closestTime = LocalTime.MAX;
+            minDays = 7;
 
             for (EventUser eventUser: eventUsers) {
                 User user = idUserMap.get(eventUser.getUserId());
                 if (user == null || user.getPeriods() == null || user.getPeriods().isEmpty()) {
                     continue;
                 }
-                processUser(user);
+                findClosestDay(user);
             }
 
             LocalDate day = date.toLocalDate();
@@ -150,49 +148,56 @@ public class EventService {
 
         }
 
-        private void processUser(User user) {
+        private void findClosestDay(User user) {
 
             for (Period period: user.getPeriods()) {
-                DayOfWeek startDayOfWeek = period.getStartDay();
+                DayOfWeek startDayOfWeek = period.getStart();
                 shift = 0;
                 while (!startDayOfWeek.equals(dayOfWeek)) {
                     shift++;
                     startDayOfWeek = startDayOfWeek.plus(1);
                 }
 
-                if (shift == 0 && dateTime.isAfter(period.getEndTime())) {
-                    shift = 7;
+                if (shift == 0) {
+                    boolean dateTimeIsBefore = false;
+                    for(TimePeriod timePeriod: period.getTimePeriods()) {
+                        dateTimeIsBefore = dateTimeIsBefore || dateTime.compareTo(timePeriod.getEnd()) <= 0;
+                    }
+                    if (!dateTimeIsBefore) {
+                        shift = 7;
+                    }
                 }
 
-                processInterim(period);
-
+                for(TimePeriod timePeriod: period.getTimePeriods()) {
+                    findClosestTime(timePeriod);
+                }
             }
         }
 
-        private void processInterim(Period period) {
+        private void findClosestTime(TimePeriod period) {
             if (shift == 0) {
                 if (minDays == 0) {
-                    if (closestTime.isAfter(period.getStartTime())) {
-                        if (dateTime.isBefore(period.getStartTime())) {
-                            closestTime = period.getStartTime();
+                    if (closestTime.isAfter(period.getStart())) {
+                        if (dateTime.isBefore(period.getStart())) {
+                            closestTime = period.getStart();
                         } else if (dateTime.isBefore(closestTime)) {
                             closestTime = dateTime;
                         }
                     }
                 } else {
                     minDays = shift;
-                    if (dateTime.isAfter(period.getStartTime())) {
+                    if (dateTime.isAfter(period.getStart())) {
                         closestTime = dateTime;
                     } else {
-                        closestTime = period.getStartTime();
+                        closestTime = period.getStart();
                     }
                 }
             } else {
                 if (minDays > shift) {
                     minDays = shift;
-                    closestTime = period.getStartTime();
-                } else if (minDays == shift && closestTime.isAfter(period.getStartTime())) {
-                    closestTime = period.getStartTime();
+                    closestTime = period.getStart();
+                } else if (minDays == shift && closestTime.isAfter(period.getStart())) {
+                    closestTime = period.getStart();
                 }
             }
         }
