@@ -6,13 +6,16 @@ CREATE TABLE users (
 );
 
 CREATE TABLE periods (
-    id SERIAL PRIMARY KEY,
+    id SERIAL,
     user_id INT REFERENCES users(id) ON DELETE CASCADE,
     start_day INT NOT NULL,
     end_day INT NOT NULL,
     start_time TIME NOT NULL,
-    end_time TIME NOT NULL
+    end_time TIME NOT NULL,
+    CONSTRAINT periods_pkey PRIMARY KEY (user_id, id)
 );
+
+CREATE INDEX ON periods(start_day, end_day, start_time, end_time, user_id);
 
 CREATE TABLE events (
     id SERIAL PRIMARY KEY,
@@ -23,8 +26,11 @@ CREATE TABLE events (
     notified BOOLEAN NOT NULL DEFAULT FALSE
 );
 
+CREATE INDEX ON events(notifying_date, notified, id);
+
 CREATE TABLE event_users (
-    id SERIAL PRIMARY KEY,
+    id SERIAL,
     event_id INT REFERENCES events(id) ON DELETE CASCADE,
-    user_id INT REFERENCES users(id) ON DELETE CASCADE
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT event_users_pkey PRIMARY KEY (event_id, id)
 );

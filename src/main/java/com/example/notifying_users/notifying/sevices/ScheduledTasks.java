@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -36,7 +37,8 @@ public class ScheduledTasks {
     @Scheduled(fixedRate = 5000)
     public void sendNotifications() {
 
-        List<Event> events = notifyingScheduler.getEvents();
+        LocalDateTime now = LocalDateTime.now();
+        List<Event> events = notifyingScheduler.getEvents(now);
         if (events.isEmpty()) {
             return;
         }
@@ -54,12 +56,12 @@ public class ScheduledTasks {
                 .collect(Collectors.toMap(Event::getId, Function.identity()));
 
         List<Event> newEvents = new ArrayList<>();
-        List<User> tempList = new ArrayList<>();
+        List<User> tempUserList = new ArrayList<>();
         for (Event event: events) {
             for (EventUser eventUser: event.getUsers()) {
                 User user = userMap.get(eventUser.getUserId());
                 if (user != null) {
-                    tempList.add(user);
+                    tempUserList.add(user);
                 }
             }
 
@@ -70,15 +72,19 @@ public class ScheduledTasks {
                 }
             }
 
-            List<User> unnotifiedUsers = notifyingService.notify(event, tempList);
+            List<User> unnotifiedUsers = notifyingService.notify(event, tempUserList);
 
             if (!unnotifiedUsers.isEmpty()) {
                 List<Long> unnotifiedUserIds = unnotifiedUsers.stream().map(User::getId).toList();
                 Event newEvent = eventService.createNewEventForUsers(event, unnotifiedUserIds);
-                newEvents.add(newEvent);
+                if (newEvent != null) {
+                    LocalDateTime newDate = eventService.getNotifyingDate(newEvent, LocalDateTime.now(), userMap);
+                    newEvent.setNotifyingDate(newDate);
+                    newEvents.add(newEvent);
+                }
             }
 
-            tempList.clear();
+            tempUserList.clear();
 
         }
 

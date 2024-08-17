@@ -1,5 +1,6 @@
 package com.example.notifying_users.user.services;
 
+import com.example.notifying_users.notifying.sevices.PeriodFilterQueries;
 import com.example.notifying_users.user.entities.User;
 import com.example.notifying_users.user.entities.UsersForNotifyingEvent;
 import com.example.notifying_users.user.repositories.UserRepository;
@@ -18,11 +19,13 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final EntityManager entityManager;
+    private final String queryTextGettingUsersIdForNotifying;
 
     @Autowired
-    public UserService(UserRepository userRepository, EntityManager entityManager) {
+    public UserService(UserRepository userRepository, EntityManager entityManager, PeriodFilterQueries periodFilterQueries) {
         this.userRepository = userRepository;
         this.entityManager = entityManager;
+        this.queryTextGettingUsersIdForNotifying = periodFilterQueries.getQueryUsersByDate();
     }
 
     public List<User> getAll() {
@@ -55,13 +58,11 @@ public class UserService {
         return userRepository.findByIdIn(ids);
     }
 
-    private static class GettingUsersForNotifying {
-
-        private final String queryText = getQueryTextGettingUsersIdForNotifying();
+    private class GettingUsersForNotifying {
 
         UsersForNotifyingEvent getData(EntityManager entityManager, UserRepository userRepository, LocalDateTime date) {
 
-            Query query = entityManager.createNativeQuery(queryText);
+            Query query = entityManager.createNativeQuery(queryTextGettingUsersIdForNotifying);
             query.setParameter("day_of_week", date.getDayOfWeek());
             query.setParameter("time", date.toLocalTime());
 
@@ -82,72 +83,6 @@ public class UserService {
             List<User> users = userRepository.findByIdIn(idsForNotifying);
             return new UsersForNotifyingEvent(users, unnotifiedUserIds);
 
-        }
-
-        private String getQueryTextGettingUsersIdForNotifying() {
-            return """
-                WITH user_id_filter_suiting_by_period AS (
-                
-                	SELECT DISTINCT
-                		user_id id
-                	FROM
-                		periods
-                	WHERE
-                		:day_of_week BETWEEN start_day AND end_day
-                		AND :time >= start_time
-                		AND :time <= end_time
-                
-                	UNION
-                
-                	SELECT
-                		user_id
-                	FROM
-                		periods
-                	WHERE
-                		start_day > end_day
-                		AND :day_of_week >= start_day
-                		AND :time >= start_time
-                		AND :time <= end_time
-                
-                	UNION
-                
-                	SELECT
-                		user_id
-                	FROM
-                		periods
-                	WHERE
-                		start_day > end_day
-                		AND :day_of_week <= end_day
-                		AND :time >= start_time
-                		AND :time <= end_time
-                
-                ),
-                
-                another_user_id AS (
-                	SELECT
-                		id
-                	FROM
-                		users
-                	LEFT JOIN user_id_filter_suiting_by_period user_filter
-                		ON users.id = user_filter.id
-                	WHERE
-                		user_filter.id IS NULL
-                )
-                
-                SELECT
-                	id,
-                	notifying true
-                FROM
-                	user_id_filter_suiting_by_period
-                
-                UNION
-                
-                SELECT
-                	id,
-                	notifying false
-                FROM
-                	another_user_id
-                """;
         }
 
     }
