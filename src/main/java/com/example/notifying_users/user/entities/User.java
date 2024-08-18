@@ -1,6 +1,7 @@
 package com.example.notifying_users.user.entities;
 
 import com.example.notifying_users.period.entities.Period;
+import com.example.notifying_users.period.entities.TimePeriod;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -49,8 +50,20 @@ public class User {
         this.firstName = user.getFirstName();
         this.patronymic = user.getPatronymic();
         this.periods = user.getPeriods();
+        fillDependenceEntities();
+    }
+
+    public void fillDependenceEntities() {
         if (this.periods != null && !this.periods.isEmpty()) {
-            this.periods.forEach(period -> period.setUser(this));
+            this.periods.forEach(period -> {
+                period.setUser(this);
+                List<TimePeriod> timePeriods = period.getTimePeriods();
+                if (timePeriods != null) {
+                    for (TimePeriod timePeriod: timePeriods) {
+                        timePeriod.setPeriod(period);
+                    }
+                }
+            });
         }
     }
 

@@ -90,7 +90,6 @@ public class EventService {
     public LocalDateTime getNotifyingDate(Event event, LocalDateTime date, Map<?, User> idUserMap) {
 
         NotifyingDateGetting notifyingDateGetting = new NotifyingDateGetting();
-
         return notifyingDateGetting.get(event, date, idUserMap);
 
     }
@@ -115,11 +114,10 @@ public class EventService {
 
     private static class NotifyingDateGetting {
 
+        private LocalDateTime date;
         private DayOfWeek dayOfWeek;
         private LocalTime dateTime;
-        private LocalTime closestTime;
         private int minDays;
-        private int shift;
 
         public LocalDateTime get(Event event, LocalDateTime date, Map<?, User> idUserMap) {
 
@@ -128,78 +126,94 @@ public class EventService {
                 return date;
             }
 
+            this.date = date;
             dayOfWeek = date.getDayOfWeek();
             dateTime = date.toLocalTime();
-            closestTime = LocalTime.MAX;
-            minDays = 7;
+            LocalDateTime minDate = LocalDateTime.MAX;
 
             for (EventUser eventUser: eventUsers) {
                 User user = idUserMap.get(eventUser.getUserId());
                 if (user == null || user.getPeriods() == null || user.getPeriods().isEmpty()) {
                     continue;
                 }
-                findClosestDay(user);
+                LocalDateTime newDate = findClosestDay(user);
+                if (newDate.isBefore(minDate)) {
+                    minDate = newDate;
+                }
             }
 
-            LocalDate day = date.toLocalDate();
-            day = day.plusDays(minDays);
+            if (minDate == LocalDateTime.MAX) {
+                minDate = date;
+            }
 
-            return LocalDateTime.of(day, closestTime);
+            return minDate;
 
         }
 
-        private void findClosestDay(User user) {
+        private LocalDateTime findClosestDay(User user) {
 
+            minDays = 7;
+            LocalTime minTime = LocalTime.MAX;
             for (Period period: user.getPeriods()) {
-                DayOfWeek startDayOfWeek = period.getStart();
-                shift = 0;
-                while (!startDayOfWeek.equals(dayOfWeek)) {
-                    shift++;
-                    startDayOfWeek = startDayOfWeek.plus(1);
+                int shift = getShift(period);
+                minDays = Math.min(shift, minDays);
+
+                // If we are in day that goes after current min day, we don't hove to compare time periods
+                if (minDays < shift) {
+                    continue;
                 }
 
-                if (shift == 0) {
-                    boolean dateTimeIsBefore = false;
-                    for(TimePeriod timePeriod: period.getTimePeriods()) {
-                        dateTimeIsBefore = dateTimeIsBefore || dateTime.compareTo(timePeriod.getEnd()) <= 0;
-                    }
-                    if (!dateTimeIsBefore) {
-                        shift = 7;
-                    }
-                }
-
+                LocalTime minTimePeriods = LocalTime.MAX;
                 for(TimePeriod timePeriod: period.getTimePeriods()) {
-                    findClosestTime(timePeriod);
+                    LocalTime time = findClosestTime(timePeriod);
+                    if (minTimePeriods.isAfter(time)) {
+                        minTimePeriods = time;
+                    }
                 }
+
+                if (minTime.isAfter(minTimePeriods)) {
+                    minTime = minTimePeriods;
+                }
+
             }
+
+            LocalDate day = date.toLocalDate().plusDays(minDays);
+            return LocalDateTime.of(day, minTime);
+
         }
 
-        private void findClosestTime(TimePeriod period) {
-            if (shift == 0) {
-                if (minDays == 0) {
-                    if (closestTime.isAfter(period.getStart())) {
-                        if (dateTime.isBefore(period.getStart())) {
-                            closestTime = period.getStart();
-                        } else if (dateTime.isBefore(closestTime)) {
-                            closestTime = dateTime;
-                        }
-                    }
-                } else {
-                    minDays = shift;
-                    if (dateTime.isAfter(period.getStart())) {
-                        closestTime = dateTime;
-                    } else {
-                        closestTime = period.getStart();
+        private int getShift(Period period) {
+            DayOfWeek startDayOfWeek = period.getStartDay();
+            int shift = -1;
+            boolean proceedCycle;
+
+            do {
+                proceedCycle = startDayOfWeek.equals(dayOfWeek);
+                if (proceedCycle && shift == -1) {
+                    for (TimePeriod timePeriod : period.getTimePeriods()) {
+                        proceedCycle = dateTime.isAfter(timePeriod.getEndTime());
                     }
                 }
-            } else {
-                if (minDays > shift) {
-                    minDays = shift;
-                    closestTime = period.getStart();
-                } else if (minDays == shift && closestTime.isAfter(period.getStart())) {
-                    closestTime = period.getStart();
-                }
+                shift++;
+                startDayOfWeek = startDayOfWeek.plus(1);
+            } while (proceedCycle);
+            return shift;
+        }
+
+        private LocalTime findClosestTime(TimePeriod timePeriod) {
+
+            LocalTime start = timePeriod.getStartTime();
+            if (minDays != 0 || dateTime.isBefore(start)) {
+                return start;
             }
+
+            LocalTime end = timePeriod.getEndTime();
+            if (dateTime.isBefore(end)) {
+                return dateTime;
+            }
+
+            return LocalTime.MAX;
+
         }
     }
 

@@ -46,8 +46,8 @@ public class NotifyingService {
 
     private boolean isEventInPeriod(DayOfWeek eventDay, LocalTime eventTime, Period period) {
 
-        DayOfWeek startDay = period.getStart();
-        DayOfWeek endDay = period.getEnd();
+        DayOfWeek startDay = period.getStartDay();
+        DayOfWeek endDay = period.getEndDay();
 
         if (eventDay.compareTo(startDay) >= 0 && eventDay.compareTo(endDay) <= 0) {
             return compareTime(eventTime, period);
@@ -60,8 +60,8 @@ public class NotifyingService {
 
     private boolean compareTime(LocalTime eventTime, Period period) {
         for (TimePeriod timePeriod: period.getTimePeriods()) {
-            if (eventTime.compareTo(timePeriod.getStart()) >= 0
-                    && eventTime.compareTo(timePeriod.getEnd()) <= 0) {
+            if (eventTime.compareTo(timePeriod.getStartTime()) >= 0
+                    && eventTime.compareTo(timePeriod.getEndTime()) <= 0) {
                 return true;
             }
         }

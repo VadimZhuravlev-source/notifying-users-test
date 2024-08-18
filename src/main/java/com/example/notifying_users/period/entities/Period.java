@@ -20,8 +20,8 @@ public class Period {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private DayOfWeek start;
-    private DayOfWeek end;
+    private DayOfWeek startDay;
+    private DayOfWeek endDay;
 
     @ManyToOne
     @JoinColumn(name = "user_id")

@@ -33,9 +33,7 @@ public class UserService {
     }
 
     public User create(User user) {
-        if (user.getPeriods() != null) {
-            user.getPeriods().forEach(period -> period.setUser(user));
-        }
+        user.fillDependenceEntities();
         return userRepository.save(user);
     }
 

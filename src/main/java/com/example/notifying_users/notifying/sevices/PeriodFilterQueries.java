@@ -41,20 +41,20 @@ public class PeriodFilterQueries {
                 user_id_filter_suiting_by_period AS (
                 
                 	SELECT DISTINCT
-                		user_id id
+                		user_id user_id,
+                		periods.id period_id
                 	FROM
                 		periods
                 	JOIN user_filter
                 		ON periods.user_id = user_filter.id
                 	WHERE
                 		:day_of_week BETWEEN start_day AND end_day
-                		AND :time >= start_time
-                		AND :time <= end_time
                 
                 	UNION
                 
                 	SELECT
-                		user_id
+                		user_id,
+                		periods.id
                 	FROM
                 		periods
                 	JOIN user_filter
@@ -62,13 +62,12 @@ public class PeriodFilterQueries {
                 	WHERE
                 		start_day > end_day
                 		AND :day_of_week >= start_day
-                		AND :time >= start_time
-                		AND :time <= end_time
                 
                 	UNION
                 
                 	SELECT
-                		user_id
+                		user_id,
+                		periods.id
                 	FROM
                 		periods
                 	JOIN user_filter
@@ -76,9 +75,18 @@ public class PeriodFilterQueries {
                 	WHERE
                 		start_day > end_day
                 		AND :day_of_week <= end_day
-                		AND :time >= start_time
-                		AND :time <= end_time
                 
+                ),
+                
+                filter_by_time AS (
+                    SELECT DISTINCT
+                        per.user_id id
+                    FROM user_id_filter_suiting_by_period per
+                    JOIN time_periods
+                        ON time_periods.period_id = per.period_id
+                    WHERE
+                		:time >= time_periods.start_time
+                		AND :time <= time_periods.end_time
                 ),
                 
                 final_filter AS (
@@ -86,8 +94,8 @@ public class PeriodFilterQueries {
                 		event_users.event_id
                 	FROM
                 		event_users
-                	JOIN user_id_filter_suiting_by_period
-                		ON event_users.user_id = user_id_filter_suiting_by_period.id
+                	JOIN filter_by_time
+                		ON event_users.user_id = filter_by_time.id
                 )
                 
                 SELECT
@@ -105,38 +113,46 @@ public class PeriodFilterQueries {
                 WITH user_id_filter_suiting_by_period AS (
                 
                 	SELECT DISTINCT
-                		user_id id
+                		user_id user_id,
+                		period.id period_id
                 	FROM
                 		periods
                 	WHERE
                 		:day_of_week BETWEEN start_day AND end_day
-                		AND :time >= start_time
-                		AND :time <= end_time
                 
                 	UNION
                 
                 	SELECT
-                		user_id
+                		user_id,
+                		period.id
                 	FROM
                 		periods
                 	WHERE
                 		start_day > end_day
                 		AND :day_of_week >= start_day
-                		AND :time >= start_time
-                		AND :time <= end_time
                 
                 	UNION
                 
                 	SELECT
-                		user_id
+                		user_id,
+                		period.id
                 	FROM
                 		periods
                 	WHERE
                 		start_day > end_day
                 		AND :day_of_week <= end_day
-                		AND :time >= start_time
-                		AND :time <= end_time
                 
+                ),
+                
+                filter_by_time AS (
+                    SELECT DISTINCT
+                        per.user_id id
+                    FROM user_id_filter_suiting_by_period per
+                    JOIN time_periods
+                        ON time_periods.period_id = per.period_id
+                    WHERE
+                		:time >= time_periods.start_time
+                		AND :time <= time_periods.end_time
                 ),
                 
                 another_user_id AS (
@@ -144,7 +160,7 @@ public class PeriodFilterQueries {
                 		users.id
                 	FROM
                 		users
-                	LEFT JOIN user_id_filter_suiting_by_period user_filter
+                	LEFT JOIN filter_by_time user_filter
                 		ON users.id = user_filter.id
                 	WHERE
                 		user_filter.id IS NULL
