@@ -4,7 +4,6 @@ import com.example.notifying_users.event.entities.DelayedEvent;
 import com.example.notifying_users.event.entities.Event;
 import com.example.notifying_users.event.repositories.DelayedEventRepository;
 import com.example.notifying_users.event.repositories.EventRepository;
-import com.example.notifying_users.event.user.EventUser;
 import com.example.notifying_users.notifying.sevices.NotifyingService;
 import com.example.notifying_users.period.entities.Period;
 import com.example.notifying_users.period.entities.TimePeriod;
@@ -19,12 +18,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.function.Function;
-import java.util.stream.Collectors;
+import java.util.*;
 
 @Service
 public class EventService {
@@ -51,19 +45,10 @@ public class EventService {
         List<User> unnotifiedUsers = notifyingService.notify(savedEvent, notifiesUsers);
         List<Long> ids = unnotifiedUsers.stream().map(User::getId).toList();
         data.userIdsForDelayedNotifying().addAll(ids);
-        DelayedEvent newEvent = createClosestToUserPeriodsEvent(savedEvent.getId(), data.userIdsForDelayedNotifying());
-        if (newEvent != null) {
-            List<User> usersByIds = userService.getUsersByIds(newEvent.getUsers().stream().map(EventUser::getUserId).toList());
-            Map<?, User> idUsersMap = usersByIds.stream().collect(Collectors.toMap(User::getId, Function.identity()));
-            LocalDateTime newDate = getNotifyingDate(newEvent, savedEvent.getNotifyingDate(), idUsersMap);
-            newEvent.setNotifyingDate(newDate);
-            delayedEventRepository.save(newEvent);
-        }
-        return savedEvent;
-    }
 
-    public DelayedEvent createNewEventForUsers(DelayedEvent event, List<Long> userIds) {
-        return createClosestToUserPeriodsEvent(event.getEventId(), userIds);
+        createDelayedEvents(savedEvent, data);
+
+        return savedEvent;
     }
 
     public Optional<Event> update(Long id, Event updatedEvent) {
@@ -95,24 +80,39 @@ public class EventService {
         eventRepository.saveAll(events);
     }
 
-    public LocalDateTime getNotifyingDate(DelayedEvent event, LocalDateTime date, Map<?, User> idUserMap) {
+    public Map<Long, LocalDateTime> getNotifyingDate(List<User> users, LocalDateTime date) {
 
         NotifyingDateGetting notifyingDateGetting = new NotifyingDateGetting();
-        return notifyingDateGetting.get(event, date, idUserMap);
+        return notifyingDateGetting.get(users, date);
 
     }
 
-    private DelayedEvent createClosestToUserPeriodsEvent(Long parentId, List<Long> userIds) {
-        if (userIds.isEmpty())
-            return null;
+    public List<DelayedEvent> createEvents(List<User> users, Long eventId, LocalDateTime notifyingDate) {
+        Map<?, LocalDateTime> userNotifyingDate = getNotifyingDate(users, notifyingDate);
+        List<DelayedEvent> newEvents = new ArrayList<>();
+        for (User user: users) {
+            LocalDateTime newDate = userNotifyingDate.get(user.getId());
+            if (newDate == null) {
+                continue;
+            }
+            DelayedEvent delayedEvent = new DelayedEvent();
+            delayedEvent.setEventId(eventId);
+            delayedEvent.setNotifyingDate(newDate);
+            delayedEvent.setUserId(user.getId());
+            newEvents.add(delayedEvent);
+        }
+        return newEvents;
+    }
 
-        DelayedEvent newEvent = new DelayedEvent();
-        newEvent.setEventId(parentId);
-        List<EventUser> users = userIds.stream().filter(Objects::nonNull).distinct()
-                .map(id -> new EventUser(newEvent, id)).toList();
+    private void createDelayedEvents(Event savedEvent, UsersForNotifyingEvent data) {
 
-        newEvent.setUsers(users);
-        return newEvent;
+        List<Long> userIds = data.userIdsForDelayedNotifying().stream().distinct().toList();
+        List<User> usersByIds = userService.getUsersByIds(userIds);
+
+        List<DelayedEvent> newEvents = createEvents(usersByIds, savedEvent.getId(), savedEvent.getNotifyingDate());
+
+        delayedEventRepository.saveAll(newEvents);
+
     }
 
     private static class NotifyingDateGetting {
@@ -122,38 +122,27 @@ public class EventService {
         private LocalTime dateTime;
         private int minDays;
 
-        public LocalDateTime get(DelayedEvent event, LocalDateTime date, Map<?, User> idUserMap) {
-
-            List<EventUser> eventUsers = event.getUsers();
-            if (eventUsers == null || eventUsers.isEmpty()) {
-                return date;
-            }
+        public Map<Long, LocalDateTime> get(List<User> users, LocalDateTime date) {
 
             this.date = date;
             dayOfWeek = date.getDayOfWeek();
             dateTime = date.toLocalTime();
-            LocalDateTime minDate = LocalDateTime.MAX;
+            Map<Long, LocalDateTime> map = new HashMap<>();
 
-            for (EventUser eventUser: eventUsers) {
-                User user = idUserMap.get(eventUser.getUserId());
-                if (user == null || user.getPeriods() == null || user.getPeriods().isEmpty()) {
-                    continue;
-                }
+            for (User user: users) {
                 LocalDateTime newDate = findClosestDay(user);
-                if (newDate.isBefore(minDate)) {
-                    minDate = newDate;
-                }
+                map.put(user.getId(), newDate);
             }
 
-            if (minDate == LocalDateTime.MAX) {
-                minDate = date;
-            }
-
-            return minDate;
+            return map;
 
         }
 
         private LocalDateTime findClosestDay(User user) {
+
+            if (user.getPeriods().isEmpty()) {
+                return null;
+            }
 
             minDays = 7;
             LocalTime minTime = LocalTime.MAX;
@@ -196,8 +185,8 @@ public class EventService {
                 if (!proceedCycle && shift == 0) {
                     boolean dateTimeBefore = true;
                     for (TimePeriod timePeriod : period.getTimePeriods()) {
-                        dateTimeBefore = !dateTime.isAfter(timePeriod.getEndTime());
-                        if (dateTimeBefore) {
+                        boolean dateTimeBeforeInner = !dateTime.isAfter(timePeriod.getEndTime());
+                        if (dateTimeBeforeInner) {
                             dateTimeBefore = false;
                             break;
                         }

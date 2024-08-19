@@ -1,14 +1,10 @@
 package com.example.notifying_users.event.entities;
 
-import com.example.notifying_users.event.user.EventUser;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import lombok.ToString;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
 @Entity
@@ -20,13 +16,9 @@ public class DelayedEvent {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private Long eventId;
+    private Long userId;
     private LocalDateTime notifyingDate;
     private boolean notified;
-
-    @OneToMany(mappedBy = "delayedEvent",
-            cascade = {CascadeType.PERSIST, CascadeType.MERGE, CascadeType.REMOVE}, fetch = FetchType.EAGER)
-    @ToString.Exclude
-    private List<EventUser> users = new ArrayList<>();
 
     @Override
     public boolean equals(Object o) {
@@ -40,6 +32,5 @@ public class DelayedEvent {
     public int hashCode() {
         return Objects.hashCode(getId());
     }
-
 
 }

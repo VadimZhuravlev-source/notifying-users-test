@@ -4,7 +4,6 @@ import com.example.notifying_users.event.entities.DelayedEvent;
 import com.example.notifying_users.event.entities.Event;
 import com.example.notifying_users.event.repositories.DelayedEventRepository;
 import com.example.notifying_users.event.services.EventService;
-import com.example.notifying_users.event.user.EventUser;
 import com.example.notifying_users.user.entities.User;
 import com.example.notifying_users.user.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,10 +44,7 @@ public class ScheduledTasks {
             return;
         }
 
-        List<Long> userIds = events.stream()
-                .flatMap(event -> event.getUsers().stream())
-                .map(EventUser::getUserId)
-                .distinct().toList();
+        List<Long> userIds = events.stream().map(DelayedEvent::getUserId).toList();
 
         Map<?, User> userMap = userService.getUsersByIds(userIds).stream()
                 .collect(Collectors.toMap(User::getId, Function.identity()));
@@ -60,28 +56,24 @@ public class ScheduledTasks {
         List<DelayedEvent> newEvents = new ArrayList<>();
         List<User> tempUserList = new ArrayList<>();
         for (DelayedEvent event: events) {
-            for (EventUser eventUser: event.getUsers()) {
-                User user = userMap.get(eventUser.getUserId());
-                if (user != null) {
-                    tempUserList.add(user);
-                }
-            }
 
+            User user = userMap.get(event.getUserId());
+            if (user == null) {
+                continue;
+            }
+            tempUserList.add(user);
             String message = Optional.of(eventMap.get(event.getEventId())).map(Event::getMessage).orElse("");
+
             List<User> unnotifiedUsers = notifyingService.notify(event.getNotifyingDate(), message, tempUserList);
 
             if (!unnotifiedUsers.isEmpty()) {
-                List<Long> unnotifiedUserIds = unnotifiedUsers.stream().map(User::getId).toList();
-                DelayedEvent newEvent = eventService.createNewEventForUsers(event, unnotifiedUserIds);
-                if (newEvent != null) {
-                    LocalDateTime newDate = eventService.getNotifyingDate(newEvent, LocalDateTime.now(), userMap);
-                    newEvent.setNotifyingDate(newDate);
-                    newEvents.add(newEvent);
-                    event.setNotified(true);
-                    newEvents.add(event);
-                }
+                List<DelayedEvent> newDelayedEvents =
+                        eventService.createEvents(unnotifiedUsers, event.getEventId(), event.getNotifyingDate());
+                newEvents.addAll(newDelayedEvents);
             }
 
+            event.setNotified(true);
+            newEvents.add(event);
             tempUserList.clear();
 
         }

@@ -26,8 +26,6 @@ public class NotifyingScheduler {
         Query query = entityManager.createNativeQuery(queryText, DelayedEvent.class);
         query.setParameter("date", now);
         query.setParameter("date_week_ago", now.minusWeeks(1));
-        query.setParameter("day_of_week", now.getDayOfWeek().getValue());
-        query.setParameter("time", now.toLocalTime());
 
         return query.getResultList();
 
