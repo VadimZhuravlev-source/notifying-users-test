@@ -3,15 +3,17 @@ package com.example.notifying_users.notifying.sevices;
 import org.springframework.stereotype.Component;
 
 @Component
-public class PeriodFilterQueries {
+public class NotifyingQueriesImpl implements NotifyingQueries {
 
     private final String eventsByDate = getQueryTextEventsByDate();
     private final String usersByDate = getQueryTextGettingUsersIdForNotifying();
 
+    @Override
     public String getQueryEventsByDate() {
         return eventsByDate;
     }
 
+    @Override
     public String getQueryUsersByDate() {
         return usersByDate;
     }

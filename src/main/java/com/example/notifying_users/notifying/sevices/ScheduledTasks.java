@@ -18,14 +18,14 @@ import java.util.stream.Collectors;
 @Component
 public class ScheduledTasks {
 
-    private final NotifyingScheduler notifyingScheduler;
+    private final NotifyingEventService notifyingScheduler;
     private final UserService userService;
     private final NotifyingService notifyingService;
     private final EventService eventService;
     private final DelayedEventRepository delayedEventRepository;
 
     @Autowired
-    public ScheduledTasks(NotifyingScheduler notifyingScheduler, UserService userService,
+    public ScheduledTasks(NotifyingEventService notifyingScheduler, UserService userService,
                           NotifyingService notifyingService, EventService eventService,
                           DelayedEventRepository delayedEventRepository) {
         this.notifyingScheduler = notifyingScheduler;

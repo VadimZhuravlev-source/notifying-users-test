@@ -37,11 +37,3 @@ CREATE TABLE delayed_events (
     notified BOOLEAN NOT NULL DEFAULT FALSE
 );
 CREATE INDEX ON delayed_events(notifying_date, notified, id);
-
---CREATE TABLE event_users (
---    id SERIAL PRIMARY KEY,
---    event_id INT REFERENCES delayed_events(id) ON DELETE CASCADE,
---    user_id INT REFERENCES users(id) ON DELETE CASCADE
---);
---
---CREATE INDEX ON event_users(event_id, user_id);

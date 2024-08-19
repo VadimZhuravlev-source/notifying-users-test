@@ -10,17 +10,18 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
-public class NotifyingScheduler {
+public class NotifyingEventServiceImpl implements NotifyingEventService {
 
     private final EntityManager entityManager;
     private final String queryText;
 
     @Autowired
-    public NotifyingScheduler(EntityManager entityManager, PeriodFilterQueries periodFilterQueries) {
+    public NotifyingEventServiceImpl(EntityManager entityManager, NotifyingQueries periodFilterQueries) {
         this.entityManager = entityManager;
         this.queryText = periodFilterQueries.getQueryEventsByDate();
     }
 
+    @Override
     public List<DelayedEvent> getEvents(LocalDateTime now) {
 
         Query query = entityManager.createNativeQuery(queryText, DelayedEvent.class);
