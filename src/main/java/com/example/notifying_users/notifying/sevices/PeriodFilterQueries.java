@@ -22,16 +22,15 @@ public class PeriodFilterQueries {
                 	SELECT
                 		id
                 	FROM
-                		events
+                		delayed_events
                 	WHERE
-                		:date >= notifying_date
-                		AND NOT notified
+                		NOT notified
                 		AND notifying_date BETWEEN :date_week_ago AND :date --Чтобы получать события только в течении недели
                 ),
                 
                 user_filter AS (
                 	SELECT DISTINCT
-                		event_users.id
+                		event_users.user_id id
                 	FROM
                 		event_users
                 	JOIN event_filter
@@ -96,14 +95,16 @@ public class PeriodFilterQueries {
                 		event_users
                 	JOIN filter_by_time
                 		ON event_users.user_id = filter_by_time.id
+                    JOIN event_filter
+                    	ON event_users.event_id = event_filter.id
                 )
                 
                 SELECT
-                	events.*
+                	delayed_events.*
                 FROM
-                	events
+                	delayed_events
                 JOIN final_filter
-                	ON events.id = final_filter.event_id
+                	ON delayed_events.id = final_filter.event_id
                 
                 """;
     }
@@ -114,7 +115,7 @@ public class PeriodFilterQueries {
                 
                 	SELECT DISTINCT
                 		user_id user_id,
-                		period.id period_id
+                		periods.id period_id
                 	FROM
                 		periods
                 	WHERE
@@ -124,7 +125,7 @@ public class PeriodFilterQueries {
                 
                 	SELECT
                 		user_id,
-                		period.id
+                		periods.id
                 	FROM
                 		periods
                 	WHERE
@@ -135,7 +136,7 @@ public class PeriodFilterQueries {
                 
                 	SELECT
                 		user_id,
-                		period.id
+                		periods.id
                 	FROM
                 		periods
                 	WHERE
@@ -170,7 +171,7 @@ public class PeriodFilterQueries {
                 	id,
                 	true notify
                 FROM
-                	user_id_filter_suiting_by_period
+                	filter_by_time
                 
                 UNION
                 

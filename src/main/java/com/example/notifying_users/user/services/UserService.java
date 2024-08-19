@@ -33,6 +33,8 @@ public class UserService {
     }
 
     public User create(User user) {
+        user.validate();
+        user.nullIdFields();
         user.fillDependenceEntities();
         return userRepository.save(user);
     }
@@ -43,6 +45,7 @@ public class UserService {
             return userOpt;
         User savedUser = userOpt.get();
         savedUser.update(updatedUser);
+        savedUser.validate();
         return Optional.of(userRepository.save(savedUser));
     }
 
@@ -59,12 +62,16 @@ public class UserService {
         return userRepository.findByIdIn(ids);
     }
 
+    public Optional<User> getById(Long id) {
+        return userRepository.findById(id);
+    }
+
     private class GettingUsersForNotifying {
 
         UsersForNotifyingEvent getData(EntityManager entityManager, UserRepository userRepository, LocalDateTime date) {
 
             Query query = entityManager.createNativeQuery(queryTextGettingUsersIdForNotifying);
-            query.setParameter("day_of_week", date.getDayOfWeek());
+            query.setParameter("day_of_week", date.getDayOfWeek().getValue());
             query.setParameter("time", date.toLocalTime());
 
             List<Object[]> rows = (List<Object[]>) query.getResultList();
@@ -73,7 +80,7 @@ public class UserService {
             ArrayList<Long> unnotifiedUserIds = new ArrayList<>();
             for (Object[] row: rows) {
                 boolean notifying = (boolean) row[1];
-                long id = (long) row[0];
+                long id = (int) row[0];
                 if (notifying) {
                     idsForNotifying.add(id);
                 } else {

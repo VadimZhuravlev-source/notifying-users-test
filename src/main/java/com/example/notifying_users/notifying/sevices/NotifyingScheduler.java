@@ -1,6 +1,6 @@
 package com.example.notifying_users.notifying.sevices;
 
-import com.example.notifying_users.event.entities.Event;
+import com.example.notifying_users.event.entities.DelayedEvent;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,12 +21,12 @@ public class NotifyingScheduler {
         this.queryText = periodFilterQueries.getQueryEventsByDate();
     }
 
-    public List<Event> getEvents(LocalDateTime now) {
+    public List<DelayedEvent> getEvents(LocalDateTime now) {
 
-        Query query = entityManager.createNativeQuery(queryText, Event.class);
+        Query query = entityManager.createNativeQuery(queryText, DelayedEvent.class);
         query.setParameter("date", now);
         query.setParameter("date_week_ago", now.minusWeeks(1));
-        query.setParameter("day_of_week", now.getDayOfWeek());
+        query.setParameter("day_of_week", now.getDayOfWeek().getValue());
         query.setParameter("time", now.toLocalTime());
 
         return query.getResultList();

@@ -1,29 +1,38 @@
 package com.example.notifying_users.event.entities;
 
+import com.example.notifying_users.event.user.EventUser;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.ToString;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 @Entity
-@Table(name = "events")
+@Table(name = "delayed_events")
 @Getter
 @Setter
-public class Event {
+public class DelayedEvent {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
+    private Long eventId;
     private LocalDateTime notifyingDate;
-    private String message;
+    private boolean notified;
+
+    @OneToMany(mappedBy = "delayedEvent",
+            cascade = {CascadeType.PERSIST, CascadeType.MERGE, CascadeType.REMOVE}, fetch = FetchType.EAGER)
+    @ToString.Exclude
+    private List<EventUser> users = new ArrayList<>();
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        Event event = (Event) o;
+        DelayedEvent event = (DelayedEvent) o;
         return Objects.equals(getId(), event.getId());
     }
 
@@ -32,9 +41,5 @@ public class Event {
         return Objects.hashCode(getId());
     }
 
-    public void update(Event event) {
-        this.message = event.getMessage();
-        this.notifyingDate = event.getNotifyingDate();
-    }
 
 }

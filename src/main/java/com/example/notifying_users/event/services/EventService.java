@@ -1,6 +1,8 @@
 package com.example.notifying_users.event.services;
 
+import com.example.notifying_users.event.entities.DelayedEvent;
 import com.example.notifying_users.event.entities.Event;
+import com.example.notifying_users.event.repositories.DelayedEventRepository;
 import com.example.notifying_users.event.repositories.EventRepository;
 import com.example.notifying_users.event.user.EventUser;
 import com.example.notifying_users.notifying.sevices.NotifyingService;
@@ -30,12 +32,15 @@ public class EventService {
     private final EventRepository eventRepository;
     private final UserService userService;
     private final NotifyingService notifyingService;
+    private final DelayedEventRepository delayedEventRepository;
 
     @Autowired
-    public EventService(EventRepository eventRepository, UserService userService, NotifyingService notifyingService) {
+    public EventService(EventRepository eventRepository, UserService userService, NotifyingService notifyingService,
+                        DelayedEventRepository delayedEventRepository) {
         this.eventRepository = eventRepository;
         this.userService = userService;
         this.notifyingService = notifyingService;
+        this.delayedEventRepository = delayedEventRepository;
     }
 
     @Transactional
@@ -46,20 +51,19 @@ public class EventService {
         List<User> unnotifiedUsers = notifyingService.notify(savedEvent, notifiesUsers);
         List<Long> ids = unnotifiedUsers.stream().map(User::getId).toList();
         data.userIdsForDelayedNotifying().addAll(ids);
-        Event newEvent = createClosestToUserPeriodsEvent(savedEvent, data.userIdsForDelayedNotifying());
+        DelayedEvent newEvent = createClosestToUserPeriodsEvent(savedEvent.getId(), data.userIdsForDelayedNotifying());
         if (newEvent != null) {
             List<User> usersByIds = userService.getUsersByIds(newEvent.getUsers().stream().map(EventUser::getUserId).toList());
             Map<?, User> idUsersMap = usersByIds.stream().collect(Collectors.toMap(User::getId, Function.identity()));
-            LocalDateTime newDate = getNotifyingDate(newEvent, LocalDateTime.now(), idUsersMap);
+            LocalDateTime newDate = getNotifyingDate(newEvent, savedEvent.getNotifyingDate(), idUsersMap);
             newEvent.setNotifyingDate(newDate);
-            eventRepository.save(newEvent);
+            delayedEventRepository.save(newEvent);
         }
-        savedEvent.setNotified(true);
         return savedEvent;
     }
 
-    public Event createNewEventForUsers(Event event, List<Long> userIds) {
-        return createClosestToUserPeriodsEvent(event, userIds);
+    public DelayedEvent createNewEventForUsers(DelayedEvent event, List<Long> userIds) {
+        return createClosestToUserPeriodsEvent(event.getEventId(), userIds);
     }
 
     public Optional<Event> update(Long id, Event updatedEvent) {
@@ -75,6 +79,10 @@ public class EventService {
         return eventRepository.findAll();
     }
 
+    public Optional<Event> getById(Long id) {
+        return eventRepository.findById(id);
+    }
+
     public void delete(Long id) {
         eventRepository.deleteById(id);
     }
@@ -87,24 +95,19 @@ public class EventService {
         eventRepository.saveAll(events);
     }
 
-    public LocalDateTime getNotifyingDate(Event event, LocalDateTime date, Map<?, User> idUserMap) {
+    public LocalDateTime getNotifyingDate(DelayedEvent event, LocalDateTime date, Map<?, User> idUserMap) {
 
         NotifyingDateGetting notifyingDateGetting = new NotifyingDateGetting();
         return notifyingDateGetting.get(event, date, idUserMap);
 
     }
 
-    private Event createClosestToUserPeriodsEvent(Event parentEvent, List<Long> userIds) {
+    private DelayedEvent createClosestToUserPeriodsEvent(Long parentId, List<Long> userIds) {
         if (userIds.isEmpty())
             return null;
 
-        Event newEvent = new Event();
-        Long parentId = parentEvent.getParentId();
-        if (parentId == null) {
-            parentId = parentEvent.getId();
-        }
-        newEvent.setParentId(parentId);
-//        newEvent.setMessage(parentEvent.getMessage());
+        DelayedEvent newEvent = new DelayedEvent();
+        newEvent.setEventId(parentId);
         List<EventUser> users = userIds.stream().filter(Objects::nonNull).distinct()
                 .map(id -> new EventUser(newEvent, id)).toList();
 
@@ -119,7 +122,7 @@ public class EventService {
         private LocalTime dateTime;
         private int minDays;
 
-        public LocalDateTime get(Event event, LocalDateTime date, Map<?, User> idUserMap) {
+        public LocalDateTime get(DelayedEvent event, LocalDateTime date, Map<?, User> idUserMap) {
 
             List<EventUser> eventUsers = event.getUsers();
             if (eventUsers == null || eventUsers.isEmpty()) {
@@ -184,18 +187,27 @@ public class EventService {
 
         private int getShift(Period period) {
             DayOfWeek startDayOfWeek = period.getStartDay();
-            int shift = -1;
+            DayOfWeek currentDayOfWeek = dayOfWeek;
+            int shift = 0;
             boolean proceedCycle;
 
             do {
-                proceedCycle = startDayOfWeek.equals(dayOfWeek);
-                if (proceedCycle && shift == -1) {
+                proceedCycle = !currentDayOfWeek.equals(startDayOfWeek);
+                if (!proceedCycle && shift == 0) {
+                    boolean dateTimeBefore = true;
                     for (TimePeriod timePeriod : period.getTimePeriods()) {
-                        proceedCycle = dateTime.isAfter(timePeriod.getEndTime());
+                        dateTimeBefore = !dateTime.isAfter(timePeriod.getEndTime());
+                        if (dateTimeBefore) {
+                            dateTimeBefore = false;
+                            break;
+                        }
                     }
+                    proceedCycle = dateTimeBefore;
                 }
-                shift++;
-                startDayOfWeek = startDayOfWeek.plus(1);
+                if (proceedCycle) {
+                    shift++;
+                    currentDayOfWeek = currentDayOfWeek.plus(1);
+                }
             } while (proceedCycle);
             return shift;
         }

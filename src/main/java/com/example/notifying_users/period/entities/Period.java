@@ -1,6 +1,8 @@
 package com.example.notifying_users.period.entities;
 
 import com.example.notifying_users.user.entities.User;
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -25,9 +27,12 @@ public class Period {
 
     @ManyToOne
     @JoinColumn(name = "user_id")
+    @JsonBackReference
     private User user;
 
-    @OneToMany(mappedBy = "period", cascade = CascadeType.ALL)
+    @JsonManagedReference
+    @OneToMany(mappedBy = "period",
+            cascade = {CascadeType.PERSIST, CascadeType.MERGE, CascadeType.REMOVE}, fetch = FetchType.EAGER)
     private List<TimePeriod> timePeriods = new ArrayList<>();
 
     @Override
@@ -41,6 +46,15 @@ public class Period {
     @Override
     public int hashCode() {
         return Objects.hashCode(getId());
+    }
+
+    public void nullIdFields() {
+        this.id = null;
+        if (timePeriods != null) {
+            for (TimePeriod timePeriod : timePeriods) {
+                timePeriod.nullIdFields();
+            }
+        }
     }
 
 }

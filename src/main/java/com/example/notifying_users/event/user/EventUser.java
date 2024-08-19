@@ -1,6 +1,6 @@
 package com.example.notifying_users.event.user;
 
-import com.example.notifying_users.event.entities.Event;
+import com.example.notifying_users.event.entities.DelayedEvent;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -20,12 +20,12 @@ public class EventUser {
 
     @ManyToOne
     @JoinColumn(name = "event_id")
-    private Event event;
+    private DelayedEvent delayedEvent;
 
     private Long userId;
 
-    public EventUser(Event event, Long userId) {
-        this.event = event;
+    public EventUser(DelayedEvent delayedEvent, Long userId) {
+        this.delayedEvent = delayedEvent;
         this.userId = userId;
     }
 

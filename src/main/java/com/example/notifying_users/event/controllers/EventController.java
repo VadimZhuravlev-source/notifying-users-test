@@ -25,10 +25,16 @@ public class EventController {
         return eventService.getAll();
     }
 
+    @GetMapping("/id")
+    public ResponseEntity<Event> getById(@PathVariable Long id) {
+        Optional<Event> event = eventService.getById(id);
+        return event.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
     @PostMapping
     public ResponseEntity<Event> createEvent(@RequestBody Event event) {
         Event newEvent = eventService.create(event);
-        return ResponseEntity.ok(eventService.create(newEvent));
+        return ResponseEntity.ok(newEvent);
     }
 
     @PutMapping("/{id}")

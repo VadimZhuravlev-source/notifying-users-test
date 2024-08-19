@@ -2,6 +2,8 @@ package com.example.notifying_users.user.entities;
 
 import com.example.notifying_users.period.entities.Period;
 import com.example.notifying_users.period.entities.TimePeriod;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -24,13 +26,11 @@ public class User {
     private String firstName;
     private String patronymic;
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    @JsonManagedReference
+    @OneToMany(mappedBy = "user",
+            cascade = {CascadeType.PERSIST, CascadeType.MERGE, CascadeType.REMOVE}, fetch = FetchType.EAGER)
     @ToString.Exclude
     private List<Period> periods;
-
-    public String getFullName() {
-        return lastName + " " + firstName  + " " + patronymic;
-    }
 
     @Override
     public boolean equals(Object o) {
@@ -45,6 +45,11 @@ public class User {
         return Objects.hashCode(getId());
     }
 
+    @JsonIgnore
+    public String getFullName() {
+        return lastName + " " + firstName  + " " + patronymic;
+    }
+
     public void update(User user) {
         this.lastName = user.getLastName();
         this.firstName = user.getFirstName();
@@ -54,7 +59,7 @@ public class User {
     }
 
     public void fillDependenceEntities() {
-        if (this.periods != null && !this.periods.isEmpty()) {
+        if (this.periods != null) {
             this.periods.forEach(period -> {
                 period.setUser(this);
                 List<TimePeriod> timePeriods = period.getTimePeriods();
@@ -64,6 +69,28 @@ public class User {
                     }
                 }
             });
+        }
+    }
+
+    public void validate() {
+        if (this.periods != null) {
+            this.periods.forEach(period -> {
+                List<TimePeriod> timePeriods = period.getTimePeriods();
+                if (timePeriods != null) {
+                    for (TimePeriod timePeriod: timePeriods) {
+                        timePeriod.validateTimes();
+                    }
+                }
+            });
+        }
+    }
+
+    public void nullIdFields() {
+        this.id = null;
+        if (this.periods != null) {
+            for (Period period: periods) {
+                period.nullIdFields();
+            }
         }
     }
 
