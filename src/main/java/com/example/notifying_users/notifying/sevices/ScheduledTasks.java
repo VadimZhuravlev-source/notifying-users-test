@@ -68,11 +68,19 @@ public class ScheduledTasks {
 
             if (!unnotifiedUsers.isEmpty()) {
                 List<DelayedEvent> newDelayedEvents =
-                        eventService.createEvents(unnotifiedUsers, event.getEventId(), event.getNotifyingDate());
-                newEvents.addAll(newDelayedEvents);
+                        eventService.createEvents(unnotifiedUsers, event.getEventId(), now);
+                // That means user has been changed and we can not find new notifying date
+                if (newDelayedEvents.isEmpty()) {
+                    event.setNotified(true);
+                } else {
+                    DelayedEvent delayedEvent = newDelayedEvents.get(0);
+                    event.setNotifyingDate(delayedEvent.getNotifyingDate());
+                }
+                //newEvents.addAll(newDelayedEvents);
+            } else {
+                event.setNotified(true);
             }
 
-            event.setNotified(true);
             newEvents.add(event);
             tempUserList.clear();
 
